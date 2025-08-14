@@ -26,45 +26,120 @@
         </div>
       </div>
       <div class="col-md-9">
-        <div class="card p-3">
-          <canvas id="patientsChart" height="120"></canvas>
+        <div class="card p-3" style="height: 260px;">
+          <h6 class="mb-3">Consultas — Hoje x Semana</h6>
+          <canvas id="patientsChart"></canvas>
         </div>
       </div>
     </div>
 
-    <!-- futuro: tabelas, últimas consultas, etc -->
+    <div class="row g-3 mt-1">
+      <div class="col-md-6">
+        <div class="card p-3">
+          <h6>Status das Consultas</h6>
+          <ul class="list-group list-group-flush">
+            <li class="list-group-item d-flex justify-content-between">
+              <span>Concluídas</span><strong id="consultasConcluidas">—</strong>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+              <span>Pendentes</span><strong id="consultasPendentes">—</strong>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card p-3">
+          <h6>Status de Pagamentos</h6>
+          <ul class="list-group list-group-flush">
+            <li class="list-group-item d-flex justify-content-between">
+              <span>Concluídos</span><strong id="pagamentosConcluidos">—</strong>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+              <span>Pendentes</span><strong id="pagamentosPendentes">—</strong>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-3 mt-3">
+      <h6>Últimos agendamentos</h6>
+      <div class="table-responsive">
+        <table class="table table-sm" id="tblLastAppointments">
+          <thead>
+            <tr>
+              <th>Paciente</th>
+              <th>Data</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script type="module">
-    import { apiRequest } from './js/api.js';
-    import { logout, isLogged } from './js/auth.js';
+  import { apiRequest } from './js/api.js';
+  import { logout, isLogged } from './js/auth.js';
 
-    document.getElementById('btnLogout').addEventListener('click', () => logout());
+  document.getElementById('btnLogout').addEventListener('click', () => logout());
+  if (!isLogged()) {
+    window.location.href = '/';
+  } else {
+    (async () => {
+      try {
+        const summary = await apiRequest('/dashboard/summary');
 
-    if (!isLogged()) {
-      window.location.href = '/';
-    } else {
-      (async () => {
-        try {
-          // exemplo: espere que o backend exponha /dashboard/summary
-          const summary = await apiRequest('/dashboard/summary');
-          document.getElementById('totalPatients').innerText = summary.totalPatients ?? 0;
+        // cards
+        document.getElementById('totalPatients').innerText       = summary.totalPatients ?? 0;
+        document.getElementById('consultasConcluidas').innerText = summary.completedAppointments ?? 0;
+        document.getElementById('consultasPendentes').innerText  = summary.pendingAppointments ?? 0;
+        document.getElementById('pagamentosConcluidos').innerText= summary.paidAppointments ?? 0;
+        document.getElementById('pagamentosPendentes').innerText = summary.unpaidAppointments ?? 0;
 
-          const ctx = document.getElementById('patientsChart').getContext('2d');
-          new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels: summary.labels || ['Jan','Fev','Mar'],
-              datasets: [{ label: 'Novos pacientes', data: summary.data || [3,5,2] }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-          });
-        } catch (err) {
-          console.error(err);
-        }
-      })();
-    }
-  </script>
+        // gráfico hoje x semana
+        const ctx = document.getElementById('patientsChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['Hoje', 'Semana'],
+            datasets: [{
+              label: 'Consultas',
+              data: [summary.appointmentsToday ?? 0, summary.appointmentsThisWeek ?? 0]
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false
+          }
+        });
+
+        // tabela últimos agendamentos
+        const tbody = document.querySelector('#tblLastAppointments tbody');
+        (summary.lastAppointments ?? []).forEach(a => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${a.patientName ?? '-'}</td>
+            <td>${formatDate(a.date)}</td>
+            <td>${a.status ?? '-'}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+      } catch (err) {
+        console.error(err);
+        alert('Falha ao carregar dashboard.');
+      }
+    })();
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '-';
+    const d = new Date(iso);
+    return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  }
+</script>
 </body>
 </html>
