@@ -12,6 +12,17 @@ export async function apiRequest(path, { method = 'GET', body, headers } = {}) {
     },
     body: body ? JSON.stringify(body) : undefined
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+if (!res.ok) {
+  const errorText = await res.text();
+  throw new Error(errorText || `HTTP ${res.status}`);
+}
+
+if (res.status === 401) {
+  localStorage.removeItem('token');
+  window.location.href = '/';
+}
+
   return res.status === 204 ? null : res.json();
+
 }

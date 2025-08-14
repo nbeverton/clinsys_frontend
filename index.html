@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="pt-br">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -9,6 +10,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="css/styles.css" rel="stylesheet">
 </head>
+
 <body class="bg-light">
   <div class="container vh-100 d-flex align-items-center">
     <div class="row w-100 justify-content-center">
@@ -16,18 +18,24 @@
         <div class="card shadow-sm">
           <div class="card-body">
             <h4 class="card-title text-center mb-3">Clinsys</h4>
+
             <form id="loginForm">
+
               <div class="mb-3">
                 <label class="form-label">E-mail</label>
                 <input id="email" type="email" class="form-control" required>
               </div>
+
               <div class="mb-3">
                 <label class="form-label">Senha</label>
                 <input id="senha" type="password" class="form-control" required>
               </div>
+
               <div id="loginMessage" class="text-danger mb-2"></div>
+
               <button class="btn btn-primary w-100" type="submit">Entrar</button>
             </form>
+
           </div>
         </div>
         <p class="text-center mt-3 small text-muted">Desenvolvido por você — versão iniciante, funcional e honesta.</p>
@@ -35,27 +43,16 @@
     </div>
   </div>
 
-  <!-- Scripts: ES Modules -->
-  <script type="module">
-    import { login } from './js/auth.js';
 
-    const form = document.getElementById('loginForm');
-    const msg = document.getElementById('loginMessage');
+<script type="module">
+  import { login } from './js/auth.js';
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      msg.textContent = '';
-      const email = document.getElementById('email').value;
-      const senha = document.getElementById('senha').value;
-      try {
-        await login(email, senha);
-        // sucesso -> dashboard
-        window.location.href = 'dashboard.html';
-      } catch (err) {
-        console.error(err);
-        msg.textContent = err.message || 'Erro ao autenticar';
-      }
-    });
-  </script>
+  document.getElementById('loginForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    const senha = document.getElementById('senha').value;
+    login(email, senha);
+  });
+</script>
 </body>
 </html>
