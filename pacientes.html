@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Clinsys — Pacientes</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/styles.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+  <!-- NAVBAR -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+    <div class="container">
+      <a class="navbar-brand" href="dashboard.html">Clinsys</a>
+      <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary btn-sm" href="dashboard.html">Dashboard</a>
+        <button id="btnNovo" class="btn btn-primary btn-sm">Novo Paciente</button>
+        <button id="btnLogout" class="btn btn-outline-secondary btn-sm">Sair</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- CONTEÚDO -->
+  <main class="container my-4">
+    <!-- Alertas -->
+    <div id="alerts"></div>
+
+    <!-- Filtros simples -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <form class="row gy-2 gx-3 align-items-center" id="filterForm">
+          <div class="col-sm-4">
+            <label class="form-label">Pesquisar por nome (contém)</label>
+            <input type="search" class="form-control" id="q" placeholder="Ex.: Maria">
+          </div>
+          <div class="col-sm-3">
+            <label class="form-label">Ordenar por</label>
+            <select id="sort" class="form-select">
+              <option value="nome,asc">Nome (A→Z)</option>
+              <option value="nome,desc">Nome (Z→A)</option>
+              <option value="dataNascimento,desc">Nascimento (mais novo)</option>
+              <option value="dataNascimento,asc">Nascimento (mais antigo)</option>
+            </select>
+          </div>
+          <div class="col-sm-2">
+            <label class="form-label">Itens por página</label>
+            <select id="size" class="form-select">
+              <option>5</option>
+              <option selected>10</option>
+              <option>20</option>
+            </select>
+          </div>
+          <div class="col-auto mt-3">
+            <button class="btn btn-outline-primary">Aplicar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- TABELA -->
+    <div class="card">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Telefone</th>
+                <th>Data de Nascimento</th>
+                <th class="text-end">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyPacientes">
+              <!-- linhas via JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginação -->
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="small text-muted" id="pageInfo">—</div>
+          <div class="btn-group">
+            <button class="btn btn-outline-secondary btn-sm" id="prevPage">Anterior</button>
+            <button class="btn btn-outline-secondary btn-sm" id="nextPage">Próxima</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL: CRIAR/EDITAR -->
+  <div class="modal fade" id="pacienteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <form class="modal-content needs-validation" id="patientForm" novalidate>
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalTitle">Novo Paciente</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <!-- campo oculto para editar -->
+          <input type="hidden" name="id" id="id">
+
+          <div class="mb-3">
+            <label class="form-label">Nome</label>
+            <input type="text" class="form-control" name="nome" id="nome" required>
+            <div class="invalid-feedback">Informe o nome.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">E-mail</label>
+            <input type="email" class="form-control" name="email" id="email" required>
+            <div class="invalid-feedback">E-mail inválido.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Telefone</label>
+            <input type="tel" class="form-control" name="telefone" id="telefone" placeholder="(11) 99999-9999">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Data de Nascimento</label>
+            <input type="date" class="form-control" name="dataNascimento" id="dataNascimento">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-primary" type="submit" id="btnSalvar">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JS do Bootstrap (para o modal) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Nosso script (ES Modules) -->
+  <script type="module" src="js/pacientes.js"></script>
+</body>
+</html>

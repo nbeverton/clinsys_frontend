@@ -1,2 +1,5 @@
 body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
 .card { border-radius: 12px; }
+
+.table td, .table th { white-space: nowrap; }
+#patientsChart { min-height: 260px; } /* pro dashboard */

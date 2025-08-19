@@ -20,7 +20,7 @@ if (!res.ok) {
 
 if (res.status === 401) {
   localStorage.removeItem('token');
-  window.location.href = '/';
+  window.location.href = 'index.html';
 }
 
   return res.status === 204 ? null : res.json();
