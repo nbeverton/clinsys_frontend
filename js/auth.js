@@ -12,10 +12,15 @@ export function logout() {
 
 export async function login(email, senha) {
   try {
+    // remove qualquer token velho para não ir no header
+    localStorage.removeItem('token');
+
     const data = await apiRequest('/auth/login', {
       method: 'POST',
-      body: { email, password: senha }
+      auth: false, // << NÃO manda Authorization aqui
+      body: { email, password: senha } // << vai como JSON
     });
+
     localStorage.setItem('token', data.token);
     window.location.href = '/dashboard.html';
   } catch (err) {
