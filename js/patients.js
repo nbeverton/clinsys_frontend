@@ -1,3 +1,4 @@
+// js/patients.js
 import { apiRequest } from './api.js';
 import { isLogged, logout } from './auth.js';
 import { qs, qsa, serializeForm, setFormValues, formatDateBR, showAlert } from './utils.js';
@@ -61,6 +62,32 @@ tbody.addEventListener('click', (e) => {
   openEditModal(id);
 });
 
+// bloco para exclusão
+tbody.addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+
+  const id = btn.dataset.id;
+  const action = btn.dataset.action;
+
+  if (action === 'edit') {
+    openEditModal(id);
+  }
+
+  if (action === 'delete') {
+    if (!confirm('Deseja realmente excluir este paciente?')) return;
+    try {
+      await apiRequest(`/patients/${id}`, { method: 'DELETE' });
+      showAlert('Paciente excluído com sucesso 🗑️', 'success');
+      loadPatients();
+    } catch (err) {
+      console.error(err);
+      showAlert('Erro ao excluir paciente.', 'danger');
+    }
+  }
+});
+
+
 // validação do formulário + submit
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -79,11 +106,11 @@ form.addEventListener('submit', async (e) => {
 
     if (id) {
       // EDITAR
-      await apiRequest(`/pacientes/${id}`, { method: 'PUT', body: data });
+      await apiRequest(`/patients/${id}`, { method: 'PUT', body: data });
       showAlert('Paciente atualizado com sucesso ✅', 'success');
     } else {
       // CRIAR
-      await apiRequest('/pacientes', { method: 'POST', body: data });
+      await apiRequest('/patients', { method: 'POST', body: data });
       showAlert('Paciente criado com sucesso ✅', 'success');
     }
 
@@ -107,7 +134,7 @@ async function openCreateModal() {
 
 async function openEditModal(id) {
   try {
-    const paciente = await apiRequest(`/pacientes/${id}`);
+    const paciente = await apiRequest(`/patients/${id}`);
     form.reset();
     form.classList.remove('was-validated');
     setFormValues(form, paciente);
@@ -132,7 +159,8 @@ function renderRows(items) {
       <td>${p.telefone ?? '—'}</td>
       <td>${p.dataNascimento ? formatDateBR(p.dataNascimento) : '—'}</td>
       <td class="text-end">
-        <button class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${p.id}">Editar</button>
+        <button class="btn btn-sm btn-outline-primary me-1" data-action="edit" data-id="${p.id}">Editar</button>
+        <button class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${p.id}">Excluir</button>
       </td>
     </tr>
   `).join('');
@@ -161,15 +189,17 @@ function updatePaginationInfo(pageData, size, totalElements) {
 
 async function loadPatients() {
   try {
+    loadingEl.classList.remove('d-none');
+    tbody.innerHTML = ""; // limpa a tabela durante o loading
+
     const params = new URLSearchParams();
     params.set('page', state.page);
     params.set('size', state.size);
     params.set('sort', state.sort);
-    if (state.q) params.set('q', state.q); // se seu backend suporta filtro "q"
+    if (state.q) params.set('q', state.q);
 
-    const data = await apiRequest(`/pacientes?${params.toString()}`);
+    const data = await apiRequest(`/patients?${params.toString()}`);
 
-    // suporta tanto Spring Page quanto array simples
     const items = Array.isArray(data) ? data : (data.content ?? []);
     renderRows(items);
 
@@ -177,15 +207,23 @@ async function loadPatients() {
       updatePaginationInfo(null, state.size, data.length);
     } else {
       updatePaginationInfo(data, data.size, data.totalElements);
-      // mantém estado consistente com resposta do servidor
       if (typeof data.number === 'number') state.page = data.number;
       if (typeof data.size === 'number') state.size = data.size;
     }
   } catch (err) {
     console.error(err);
     showAlert('Erro ao carregar pacientes.', 'danger');
+  } finally {
+    loadingEl.classList.add('d-none');
   }
 }
+
+
+// aplicar máscara no campo telefone
+Inputmask({ mask: "(99) 99999-9999" }).mask("#telefone");
+
+// Spinner de loading
+const loadingEl = qs('#loading');
 
 // carregamento inicial
 loadPatients();
