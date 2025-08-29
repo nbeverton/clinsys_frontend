@@ -190,8 +190,8 @@ function updatePaginationInfo(pageData, size, totalElements) {
 
 async function loadPatients() {
   try {
-    loadingEl.classList.remove('d-none');
-    tbody.innerHTML = ""; // limpa a tabela durante o loading
+  const loadingEl = document.getElementById('loading');
+  loadingEl.style.display = 'block'; 
 
     const params = new URLSearchParams();
     params.set('page', state.page);
