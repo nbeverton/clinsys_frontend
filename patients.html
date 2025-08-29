@@ -97,47 +97,58 @@
     </div>
   </main>
 
-  <!-- MODAL: CRIAR/EDITAR -->
-  <div class="modal fade" id="pacienteModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <form class="modal-content needs-validation" id="patientForm" novalidate>
-        <div class="modal-header">
-          <h5 class="modal-title" id="modalTitle">Novo Paciente</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+<!-- MODAL: CRIAR/EDITAR -->
+<div class="modal fade" id="pacienteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content needs-validation" id="patientForm" novalidate>
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitle">Novo Paciente</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <!-- campo oculto para editar -->
+        <input type="hidden" name="id" id="id">
+
+        <div class="mb-3">
+          <label class="form-label">Nome</label>
+          <input type="text" class="form-control" name="name" id="name" required>
+          <div class="invalid-feedback">Informe o nome.</div>
         </div>
-        <div class="modal-body">
-          <!-- campo oculto para editar -->
-          <input type="hidden" name="id" id="id">
 
-          <div class="mb-3">
-            <label class="form-label">Nome</label>
-            <input type="text" class="form-control" name="nome" id="nome" required>
-            <div class="invalid-feedback">Informe o nome.</div>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">E-mail</label>
-            <input type="email" class="form-control" name="email" id="email" required>
-            <div class="invalid-feedback">E-mail inválido.</div>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Telefone</label>
-            <input type="tel" class="form-control" name="telefone" id="telefone" placeholder="(11) 99999-9999">
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Data de Nascimento</label>
-            <input type="date" class="form-control" name="dataNascimento" id="dataNascimento">
-          </div>
+        <div class="mb-3">
+          <label class="form-label">E-mail</label>
+          <input type="email" class="form-control" name="email" id="email" required>
+          <div class="invalid-feedback">E-mail inválido.</div>
         </div>
-        <div class="modal-footer">
-          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
-          <button class="btn btn-primary" type="submit" id="btnSalvar">Salvar</button>
+
+        <div class="mb-3">
+          <label class="form-label">Telefone</label>
+          <input type="tel" class="form-control" name="phone" id="phone" placeholder="(11) 99999-9999">
         </div>
-      </form>
-    </div>
+
+        <div class="mb-3">
+          <label class="form-label">Data de Nascimento</label>
+          <input type="date" class="form-control" name="birthDate" id="birthDate">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Gênero</label>
+          <select class="form-select" name="gender" id="gender" required>
+            <option value="">Selecione...</option>
+            <option value="MALE">Masculino</option>
+            <option value="FEMALE">Feminino</option>
+            <option value="OTHER">Outro</option>
+          </select>
+          <div class="invalid-feedback">Selecione o gênero.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary" type="submit" id="btnSalvar">Salvar</button>
+      </div>
+    </form>
   </div>
+</div>
 
   <!-- JS do Bootstrap (para o modal) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

@@ -127,7 +127,7 @@ form.addEventListener('submit', async (e) => {
 async function openCreateModal() {
   form.reset();
   form.classList.remove('was-validated');
-  setFormValues(form, { id: null, nome: '', email: '', telefone: '', dataNascimento: null });
+  setFormValues(form, { id: null, name: '', email: '', phone: '', birthDate: null, gender: '' });
   modalTitle.textContent = 'Novo Paciente';
   modal.show();
 }
@@ -148,16 +148,17 @@ async function openEditModal(id) {
 
 function renderRows(items) {
   if (!items || items.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Nenhum paciente encontrado.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Nenhum paciente encontrado.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = items.map(p => `
     <tr>
-      <td>${p.nome ?? '—'}</td>
+      <td>${p.name ?? '—'}</td>
       <td>${p.email ?? '—'}</td>
-      <td>${p.telefone ?? '—'}</td>
-      <td>${p.dataNascimento ? formatDateBR(p.dataNascimento) : '—'}</td>
+      <td>${p.phone ?? '—'}</td>
+      <td>${p.birthDate ? formatDateBR(p.birthDate) : '—'}</td>
+      <td>${p.gender ?? '—'}</td>
       <td class="text-end">
         <button class="btn btn-sm btn-outline-primary me-1" data-action="edit" data-id="${p.id}">Editar</button>
         <button class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${p.id}">Excluir</button>
