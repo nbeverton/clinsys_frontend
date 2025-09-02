@@ -188,16 +188,19 @@ function updatePaginationInfo(pageData, size, totalElements) {
   nextBtn.disabled = false;
 }
 
+// Spinner de loading
+const loadingEl = qs('#loading');
+
+// Carregar pacientes
 async function loadPatients() {
   try {
-  const loadingEl = document.getElementById('loading');
-  loadingEl.style.display = 'block'; 
+    loadingEl.classList.remove('d-none'); // mostra spinner
 
     const params = new URLSearchParams();
     params.set('page', state.page);
     params.set('size', state.size);
     params.set('sort', state.sort);
-    if (state.q) params.set('q', state.q);
+    if (state.q) params.set('name', state.q);
 
     const data = await apiRequest(`/patients?${params.toString()}`);
 
@@ -215,16 +218,13 @@ async function loadPatients() {
     console.error(err);
     showAlert('Erro ao carregar pacientes.', 'danger');
   } finally {
-    loadingEl.classList.add('d-none');
+    loadingEl.classList.add('d-none'); // esconde spinner
   }
 }
 
 
 // aplicar máscara no campo telefone
-Inputmask({ mask: "(99) 99999-9999" }).mask("#telefone");
-
-// Spinner de loading
-const loadingEl = qs('#loading');
+Inputmask({ mask: "(99) 99999-9999" }).mask("#phone");
 
 // carregamento inicial
 loadPatients();
