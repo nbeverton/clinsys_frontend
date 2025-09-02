@@ -11,7 +11,7 @@ if (!isLogged()) {
 const state = {
   page: 0,
   size: 10,
-  sort: 'nome,asc',
+  sort: 'name,asc',
   q: '' // filtro por nome (contém)
 };
 
@@ -196,11 +196,11 @@ async function loadPatients() {
   try {
     loadingEl.classList.remove('d-none'); // mostra spinner
 
-    const params = new URLSearchParams();
-    params.set('page', state.page);
-    params.set('size', state.size);
-    params.set('sort', state.sort);
-    if (state.q) params.set('name', state.q);
+      const params = new URLSearchParams();
+      params.set('page', state.page);
+      params.set('size', state.size);
+      params.set('sort', state.sort);
+      if (state.q) params.set('name', state.q); // envia name (o backend também aceita 'q')
 
     const data = await apiRequest(`/patients?${params.toString()}`);
 
