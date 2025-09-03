@@ -20,7 +20,7 @@ const pageInfo = qs('#pageInfo');
 const prevBtn = qs('#prevPage');
 const nextBtn = qs('#nextPage');
 const btnNovo = qs('#btnNovo');
-const btnLogout = qs('#btnLogout');
+// const btnLogout = qs('#btnLogout');
 const filterForm = qs('#filterForm');
 
 const form = qs('#patientForm');
@@ -30,7 +30,7 @@ const modalTitle = qs('#modalTitle');
 const btnSalvar = qs('#btnSalvar');
 
 // listeners básicos
-btnLogout.addEventListener('click', () => logout());
+// btnLogout.addEventListener('click', () => logout());
 
 filterForm.addEventListener('submit', (e) => {
   e.preventDefault();
