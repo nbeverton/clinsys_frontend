@@ -70,6 +70,10 @@ tbody.addEventListener('click', async (e) => {
   const id = btn.dataset.id;
   const action = btn.dataset.action;
 
+  if (action === 'new-appointment') {
+    openAppointmentModal(id);
+  }
+
   if (action === 'edit') {
     openEditModal(id);
   }
@@ -159,10 +163,11 @@ function renderRows(items) {
       <td>${p.phone ?? '—'}</td>
       <td>${p.birthDate ? formatDateBR(p.birthDate) : '—'}</td>
       <td>${p.gender ?? '—'}</td>
-      <td class="text-end">
-        <button class="btn btn-sm btn-outline-primary me-1" data-action="edit" data-id="${p.id}">Editar</button>
-        <button class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${p.id}">Excluir</button>
-      </td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-primary me-1" data-action="edit" data-id="${p.id}">Editar</button>
+          <button class="btn btn-sm btn-outline-danger me-1" data-action="delete" data-id="${p.id}">Excluir</button>
+          <button class="btn btn-sm btn-outline-success" data-action="new-appointment" data-id="${p.id}">Nova Consulta</button>
+        </td>
     </tr>
   `).join('');
 }
@@ -221,6 +226,40 @@ async function loadPatients() {
     loadingEl.classList.add('d-none'); // esconde spinner
   }
 }
+
+// Para adicionar consulta direto na página de paciente (Busca pelo nome)
+const appointmentModalEl = document.getElementById('appointmentModal');
+const appointmentModal = new bootstrap.Modal(appointmentModalEl);
+const appointmentForm = document.getElementById('appointmentForm');
+
+function openAppointmentModal(patientId) {
+  document.getElementById('appointmentPatientId').value = patientId;
+  appointmentForm.reset();
+  appointmentModal.show();
+}
+
+appointmentForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const appointment = {
+    date: document.getElementById('appointmentDate').value,
+    time: document.getElementById('appointmentTime').value,
+    description: document.getElementById('appointmentDescription').value,
+    status: 'AGENDADA',
+    paid: false,
+    patientId: document.getElementById('appointmentPatientId').value,
+    userId: document.getElementById('appointmentUserId').value
+  };
+
+  try {
+    await apiRequest('/appointments', { method: 'POST', body: appointment });
+    showAlert('Consulta criada com sucesso ✅', 'success');
+    appointmentModal.hide();
+  } catch (err) {
+    console.error(err);
+    showAlert('Erro ao criar consulta', 'danger');
+  }
+});
 
 
 // aplicar máscara no campo telefone

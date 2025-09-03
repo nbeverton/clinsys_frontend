@@ -146,6 +146,42 @@
   </div>
 </div>
 
+<!-- Modal Nova Consulta -->
+<div class="modal fade" id="appointmentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form id="appointmentForm" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Nova Consulta</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="appointmentPatientId">
+
+        <div class="mb-3">
+          <label class="form-label">Data</label>
+          <input type="date" id="appointmentDate" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Hora</label>
+          <input type="time" id="appointmentTime" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Descrição</label>
+          <input type="text" id="appointmentDescription" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Médico/Usuário (ID)</label>
+          <input type="number" id="appointmentUserId" class="form-control" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
   <!-- JS do Bootstrap (para o modal) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module">
