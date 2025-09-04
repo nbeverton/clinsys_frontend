@@ -1,105 +1,127 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consultas - Clinsys</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consultas - Clinsys</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
+<body class="bg-light">
 
-    <!-- Navbar  -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Clinsys</a>
-            <div class="collapse navbar-collapse">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="patients.html">Pacientes</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="appointments.html">Consultas</a></li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+  <!-- Navbar -->
+  <script type="module">
+    import { loadNavbar } from "./js/navbar.js";
+    loadNavbar();
+  </script>
 
-    <div class="container mt-4">
-        <h2>Consultas</h2>
-        <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#appointmentModal">Nova Consulta</button>
+  <main class="container my-4">
+    <!-- Alertas -->
+    <div id="alerts"></div>
 
-        <!-- Tabela de Consultas -->
-        <table class="table table-striped">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="mb-0">Consultas</h2>
+      <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#appointmentModal">Nova Consulta</button>
+    </div>
+
+    <!-- Spinner -->
+    <div id="loading" class="text-center my-3 d-none">
+      <div class="spinner-border" role="status"></div>
+      <p class="text-muted mt-2">Carregando consultas...</p>
+    </div>
+
+    <!-- Tabela -->
+    <div class="card">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table align-middle">
             <thead>
-                <tr>
-                    <th>Data</th>
-                    <th>Hora</th>
-                    <th>Paciente</th>
-                    <th>Médico</th>
-                    <th>Status</th>
-                    <th>Pago</th>
-                    <th>Ações</th>
-                </tr>
+              <tr>
+                <th>Data</th>
+                <th>Hora</th>
+                <th>Paciente</th>
+                <th>Médico</th>
+                <th>Status</th>
+                <th>Pago</th>
+                <th class="text-end">Ações</th>
+              </tr>
             </thead>
             <tbody id="appointmentsTableBody">
-                <!-- preenchido pelo JS -->
+              <!-- preenchido via JS -->
             </tbody>
-        </table>
-    </div>
-
-    <!-- Modal de Consulta -->
-    <div class="modal fade" id="appointmentModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <form id="appointmentForm" class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Cadastrar Consulta</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="appointmentId">
-
-                    <div class="mb-3">
-                        <label for="date" class="form-label">Data</label>
-                        <input type="date" id="date" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="time" class="form-label">Hora</label>
-                        <input type="time" id="time" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Descrição</label>
-                        <input type="text" id="description" class="form-control">
-                    </div>
-                    <div class="mb-3">
-                        <label for="status" class="form-label">Status</label>
-                        <select id="status" class="form-select" required>
-                            <option value="AGENDADA">Agendada</option>
-                            <option value="REALIZADA">Realizada</option>
-                            <option value="CANCELADA">Cancelada</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="paid" class="form-label">Pagamento</label>
-                        <select id="paid" class="form-select">
-                            <option value="true">Pago</option>
-                            <option value="false">Pendente</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="patientId" class="form-label">Paciente</label>
-                        <input type="number" id="patientId" class="form-control" placeholder="ID do paciente" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="userId" class="form-label">Médico/Usuário</label>
-                        <input type="number" id="userId" class="form-control" placeholder="ID do usuário" required>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Salvar</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                </div>
-            </form>
+          </table>
         </div>
-    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/appointments.js"></script>
+        <!-- Paginação -->
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="small text-muted" id="pageInfo">—</div>
+          <div class="btn-group">
+            <button class="btn btn-outline-secondary btn-sm" id="prevPage">Anterior</button>
+            <button class="btn btn-outline-secondary btn-sm" id="nextPage">Próxima</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal de Consulta -->
+  <div class="modal fade" id="appointmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <form id="appointmentForm" class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Cadastrar/Editar Consulta</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="appointmentId">
+
+          <div class="mb-3">
+            <label for="date" class="form-label">Data</label>
+            <input type="date" id="date" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label for="time" class="form-label">Hora</label>
+            <input type="time" id="time" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label for="description" class="form-label">Descrição</label>
+            <input type="text" id="description" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label for="status" class="form-label">Status</label>
+            <select id="status" class="form-select" required>
+              <option value="AGENDADA">Agendada</option>
+              <option value="REALIZADA">Realizada</option>
+              <option value="CANCELADA">Cancelada</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="paid" class="form-label">Pagamento</label>
+            <select id="paid" class="form-select">
+              <option value="true">Pago</option>
+              <option value="false">Pendente</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="patientId" class="form-label">Paciente (ID)</label>
+            <input type="number" id="patientId" class="form-control" placeholder="ID do paciente" required>
+          </div>
+          <div class="mb-3">
+            <label for="userId" class="form-label">Médico/Usuário (ID)</label>
+            <input type="number" id="userId" class="form-control" placeholder="ID do usuário" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-primary" type="submit">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- IMPORTANTE: ES Module para poder importar apiRequest -->
+  <script type="module" src="js/appointments.js"></script>
 </body>
 </html>
