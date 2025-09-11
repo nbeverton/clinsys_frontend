@@ -12,7 +12,8 @@ const state = {
   page: 0,
   size: 10,
   sort: 'name,asc',
-  q: '' // filtro por nome (contém)
+  q: '',    // filtro por nome (contém)
+  cpf: ''   // novo: filtro por cpf (pode ser parcial)
 };
 
 const tbody = qs('#tbodyPacientes');
@@ -20,7 +21,6 @@ const pageInfo = qs('#pageInfo');
 const prevBtn = qs('#prevPage');
 const nextBtn = qs('#nextPage');
 const btnNovo = qs('#btnNovo');
-// const btnLogout = qs('#btnLogout');
 const filterForm = qs('#filterForm');
 
 const form = qs('#patientForm');
@@ -29,19 +29,18 @@ const modal = new bootstrap.Modal(modalEl);
 const modalTitle = qs('#modalTitle');
 const btnSalvar = qs('#btnSalvar');
 
-// listeners básicos
-// btnLogout.addEventListener('click', () => logout());
+// listeners básicos - Atenção nesse ponto!!!!!!
+btnNovo.addEventListener('click', () => openCreateModal());
 
 filterForm.addEventListener('submit', (e) => {
   e.preventDefault();
   state.q = qs('#q').value?.trim();
+  state.cpf = qs('#cpfFilter').value?.trim();  // pega valor do filtro de CPF
   state.sort = qs('#sort').value;
   state.size = parseInt(qs('#size').value || '10', 10);
   state.page = 0;
   loadPatients();
 });
-
-btnNovo.addEventListener('click', () => openCreateModal());
 
 prevBtn.addEventListener('click', () => {
   if (state.page > 0) {
@@ -56,47 +55,39 @@ nextBtn.addEventListener('click', () => {
 
 // delegação para botões de edição na tabela
 tbody.addEventListener('click', (e) => {
-  const btn = e.target.closest('[data-action="edit"]');
-  if (!btn) return;
-  const id = btn.dataset.id;
-  openEditModal(id);
-});
-
-// bloco para exclusão
-tbody.addEventListener('click', async (e) => {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
 
-  const id = btn.dataset.id;
   const action = btn.dataset.action;
+  const id = btn.dataset.id;
 
   if (action === 'new-appointment') {
     openAppointmentModal(id);
-  }
-
-  if (action === 'edit') {
+  } else if (action === 'edit') {
     openEditModal(id);
-  }
-
-  if (action === 'delete') {
-    if (!confirm('Deseja realmente excluir este paciente?')) return;
-    try {
-      await apiRequest(`/patients/${id}`, { method: 'DELETE' });
-      showAlert('Paciente excluído com sucesso 🗑️', 'success');
-      loadPatients();
-    } catch (err) {
-      console.error(err);
-      showAlert('Erro ao excluir paciente.', 'danger');
-    }
+  } else if (action === 'delete') {
+    deletePatient(id);
   }
 });
+
+// bloco para exclusão
+async function deletePatient(id) {
+  if (!confirm('Deseja realmente excluir este paciente?')) return;
+  try {
+    await apiRequest(`/patients/${id}`, { method: 'DELETE' });
+    showAlert('Paciente excluído com sucesso 🗑️', 'success');
+    loadPatients();
+  } catch (err) {
+    console.error(err);
+    showAlert('Erro ao excluir paciente.', 'danger');
+  }
+}
 
 
 // validação do formulário + submit
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  // validação nativa + classe bootstrap
   form.classList.add('was-validated');
   if (!form.checkValidity()) return;
 
@@ -105,15 +96,10 @@ form.addEventListener('submit', async (e) => {
   try {
     btnSalvar.disabled = true;
 
-    // se o backend não quer "id" no body no PUT, pode remover:
-    // delete data.id;
-
     if (id) {
-      // EDITAR
       await apiRequest(`/patients/${id}`, { method: 'PUT', body: data });
       showAlert('Paciente atualizado com sucesso ✅', 'success');
     } else {
-      // CRIAR
       await apiRequest('/patients', { method: 'POST', body: data });
       showAlert('Paciente criado com sucesso ✅', 'success');
     }
@@ -131,7 +117,7 @@ form.addEventListener('submit', async (e) => {
 async function openCreateModal() {
   form.reset();
   form.classList.remove('was-validated');
-  setFormValues(form, { id: null, name: '', email: '', phone: '', birthDate: null, gender: '' });
+  setFormValues(form, { id: null, name: '', cpf: '', email: '', phone: '', birthDate: null, gender: '' });
   modalTitle.textContent = 'Novo Paciente';
   modal.show();
 }
@@ -141,13 +127,22 @@ async function openEditModal(id) {
     const paciente = await apiRequest(`/patients/${id}`);
     form.reset();
     form.classList.remove('was-validated');
-    setFormValues(form, paciente);
-    modalTitle.textContent = `Editar: ${paciente.nome ?? 'Paciente'}`;
+    setFormValues(form, paciente); // preenche name, cpf, email, etc.
+    modalTitle.textContent = `Editar: ${paciente.name ?? 'Paciente'}`;
     modal.show();
   } catch (err) {
     console.error(err);
     showAlert('Não foi possível carregar o paciente.', 'danger');
   }
+}
+
+// formatação do CPF para exibição (aceita CPF com ou sem formatação)
+function formatCpfBR(cpf) {
+  if (!cpf) return '—';
+  // remove não dígitos
+  const digits = String(cpf).replace(/\D/g, '');
+  if (digits.length !== 11) return cpf; // retorna o que veio se não tiver 11 dígitos
+  return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
 }
 
 function renderRows(items) {
@@ -159,21 +154,20 @@ function renderRows(items) {
   tbody.innerHTML = items.map(p => `
     <tr>
       <td>${p.name ?? '—'}</td>
+      <td>${p.cpf ? formatCpfBR(p.cpf) : '—'}</td>
       <td>${p.email ?? '—'}</td>
       <td>${p.phone ?? '—'}</td>
       <td>${p.birthDate ? formatDateBR(p.birthDate) : '—'}</td>
-      <td>${p.gender ?? '—'}</td>
-        <td class="text-end">
-          <button class="btn btn-sm btn-outline-primary me-1" data-action="edit" data-id="${p.id}">Editar</button>
-          <button class="btn btn-sm btn-outline-danger me-1" data-action="delete" data-id="${p.id}">Excluir</button>
-          <button class="btn btn-sm btn-outline-success" data-action="new-appointment" data-id="${p.id}">Nova Consulta</button>
-        </td>
+      <td class="text-end">
+        <button class="btn btn-sm btn-outline-primary me-1" data-action="edit" data-id="${p.id}">Editar</button>
+        <button class="btn btn-sm btn-outline-danger me-1" data-action="delete" data-id="${p.id}">Excluir</button>
+        <button class="btn btn-sm btn-outline-success" data-action="new-appointment" data-id="${p.id}">Nova Consulta</button>
+      </td>
     </tr>
   `).join('');
 }
 
 function updatePaginationInfo(pageData, size, totalElements) {
-  // quando vier Spring Page
   if (pageData && typeof pageData.number === 'number') {
     const { number, totalPages, first, last, numberOfElements } = pageData;
     pageInfo.textContent = `Página ${number + 1} de ${totalPages} • Itens nesta página: ${numberOfElements}`;
@@ -199,13 +193,18 @@ const loadingEl = qs('#loading');
 // Carregar pacientes
 async function loadPatients() {
   try {
-    loadingEl.classList.remove('d-none'); // mostra spinner
+    loadingEl.classList.remove('d-none');
 
-      const params = new URLSearchParams();
-      params.set('page', state.page);
-      params.set('size', state.size);
-      params.set('sort', state.sort);
-      if (state.q) params.set('name', state.q); // envia name (o backend também aceita 'q')
+    const params = new URLSearchParams();
+    params.set('page', state.page);
+    params.set('size', state.size);
+    params.set('sort', state.sort);
+    if (state.q) params.set('name', state.q);
+    if (state.cpf) {
+      // envia cpf já sem formatação (remove máscara)
+      const cpfDigits = state.cpf.replace(/\D/g, '');
+      params.set('cpf', cpfDigits);
+    }
 
     const data = await apiRequest(`/patients?${params.toString()}`);
 
@@ -223,7 +222,7 @@ async function loadPatients() {
     console.error(err);
     showAlert('Erro ao carregar pacientes.', 'danger');
   } finally {
-    loadingEl.classList.add('d-none'); // esconde spinner
+    loadingEl.classList.add('d-none');
   }
 }
 
@@ -264,6 +263,8 @@ appointmentForm.addEventListener('submit', async (e) => {
 
 // aplicar máscara no campo telefone
 Inputmask({ mask: "(99) 99999-9999" }).mask("#phone");
+Inputmask({ mask: "999.999.999-99" }).mask("#cpf");
+Inputmask({ mask: "999.999.999-99" }).mask("#cpfFilter");
 
 // carregamento inicial
 loadPatients();

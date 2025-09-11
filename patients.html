@@ -23,18 +23,22 @@
     <div class="card mb-3">
       <div class="card-body">
         <form class="row gy-2 gx-3 align-items-center" id="filterForm">
-          <div class="col-sm-4">
+          <div class="col-sm-3">
             <label class="form-label">Pesquisar por nome (contém)</label>
             <input type="search" class="form-control" id="q" placeholder="Ex.: Maria">
           </div>
           <div class="col-sm-3">
+            <label class="form-label">Pesquisar por CPF</label>
+            <input type="text" class="form-control" id="cpfFilter" placeholder="000.000.000-00">
+          </div>
+          <div class="col-sm-3">
             <label class="form-label">Ordenar por</label>
-              <select id="sort" class="form-select">
-                <option value="name,asc">Nome (A→Z)</option>
-                <option value="name,desc">Nome (Z→A)</option>
-                <option value="birthDate,desc">Nascimento (mais novo)</option>
-                <option value="birthDate,asc">Nascimento (mais antigo)</option>
-              </select>
+            <select id="sort" class="form-select">
+              <option value="name,asc">Nome (A→Z)</option>
+              <option value="name,desc">Nome (Z→A)</option>
+              <option value="birthDate,desc">Nascimento (mais novo)</option>
+              <option value="birthDate,asc">Nascimento (mais antigo)</option>
+            </select>
           </div>
           <div class="col-sm-2">
             <label class="form-label">Itens por página</label>
@@ -53,14 +57,13 @@
 
     <!-- TABELA -->
     <div class="d-flex justify-content-end mb-3">
-        <button id="btnNovo" class="btn btn-primary">+ Novo paciente</button>
+      <button id="btnNovo" class="btn btn-primary">+ Novo paciente</button>
     </div>
 
     <div id="loading" class="text-center my-3 d-none">
       <div class="spinner-border text-primary" role="status"></div>
       <p class="text-muted">Carregando pacientes...</p>
     </div>
-
 
     <div class="card">
       <div class="card-body">
@@ -69,6 +72,7 @@
             <thead>
               <tr>
                 <th>Nome</th>
+                <th>CPF</th>
                 <th>E-mail</th>
                 <th>Telefone</th>
                 <th>Data de Nascimento</th>
@@ -94,57 +98,63 @@
   </main>
 
 <!-- MODAL: CRIAR/EDITAR -->
-<div class="modal fade" id="pacienteModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <form class="modal-content needs-validation" id="patientForm" novalidate>
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalTitle">Novo Paciente</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-      </div>
-      <div class="modal-body">
-        <!-- campo oculto para editar -->
-        <input type="hidden" name="id" id="id">
-
-        <div class="mb-3">
-          <label class="form-label">Nome</label>
-          <input type="text" class="form-control" name="name" id="name" required>
-          <div class="invalid-feedback">Informe o nome.</div>
+  <div class="modal fade" id="pacienteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <form class="modal-content needs-validation" id="patientForm" novalidate>
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalTitle">Novo Paciente</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
+        <div class="modal-body">
+          <!-- campo oculto para editar -->
+          <input type="hidden" name="id" id="id">
 
-        <div class="mb-3">
-          <label class="form-label">E-mail</label>
-          <input type="email" class="form-control" name="email" id="email" required>
-          <div class="invalid-feedback">E-mail inválido.</div>
-        </div>
+          <div class="mb-3">
+            <label class="form-label">Nome</label>
+            <input type="text" class="form-control" name="name" id="name" required>
+            <div class="invalid-feedback">Informe o nome.</div>
+          </div>
 
-        <div class="mb-3">
-          <label class="form-label">Telefone</label>
-          <input type="tel" class="form-control" name="phone" id="phone" placeholder="(11) 99999-9999">
-        </div>
+          <div class="mb-3">
+            <label class="form-label">CPF</label>
+            <input type="text" class="form-control" name="cpf" id="cpf" placeholder="000.000.000-00" required>
+            <div class="invalid-feedback">Informe o CPF.</div>
+          </div>
 
-        <div class="mb-3">
-          <label class="form-label">Data de Nascimento</label>
-          <input type="date" class="form-control" name="birthDate" id="birthDate">
-        </div>
+          <div class="mb-3">
+            <label class="form-label">E-mail</label>
+            <input type="email" class="form-control" name="email" id="email" required>
+            <div class="invalid-feedback">E-mail inválido.</div>
+          </div>
 
-        <div class="mb-3">
-          <label class="form-label">Gênero</label>
-          <select class="form-select" name="gender" id="gender" required>
-            <option value="">Selecione...</option>
-            <option value="MALE">Masculino</option>
-            <option value="FEMALE">Feminino</option>
-            <option value="OTHER">Outro</option>
-          </select>
-          <div class="invalid-feedback">Selecione o gênero.</div>
+          <div class="mb-3">
+            <label class="form-label">Telefone</label>
+            <input type="tel" class="form-control" name="phone" id="phone" placeholder="(11) 99999-9999">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Data de Nascimento</label>
+            <input type="date" class="form-control" name="birthDate" id="birthDate">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Gênero</label>
+            <select class="form-select" name="gender" id="gender" required>
+              <option value="">Selecione...</option>
+              <option value="MALE">Masculino</option>
+              <option value="FEMALE">Feminino</option>
+              <option value="OTHER">Outro</option>
+            </select>
+            <div class="invalid-feedback">Selecione o gênero.</div>
+          </div>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
-        <button class="btn btn-primary" type="submit" id="btnSalvar">Salvar</button>
-      </div>
-    </form>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-primary" type="submit" id="btnSalvar">Salvar</button>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
 
 <!-- Modal Nova Consulta -->
 <div class="modal fade" id="appointmentModal" tabindex="-1" aria-hidden="true">
