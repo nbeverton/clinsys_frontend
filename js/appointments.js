@@ -8,6 +8,67 @@ if (!isLogged()) {
 
 const API_PATH = "/appointments";
 
+// prefill automatico para pacientes
+async function fetchPatientName(patientId) {
+  if (!patientId) return null;
+  try {
+    const p = await apiRequest(`/patients/${patientId}`, { method: 'GET' });
+    return p?.name ?? null;
+  } catch (err) {
+    console.warn('Não foi possível buscar paciente para prefill:', err);
+    return null;
+  }
+}
+
+async function prefillAppointmentFromContext({ autoOpen = true } = {}) {
+  // 1) checa URL
+  const params = new URLSearchParams(window.location.search);
+  let patientId = params.get('patientId');
+
+  // 2) se não há, checa sessionStorage
+  if (!patientId) {
+    patientId = sessionStorage.getItem('clinsys.newAppointment.patientId');
+    if (patientId) {
+      // limpa a chave para não reaplicar acidentalmente
+      sessionStorage.removeItem('clinsys.newAppointment.patientId');
+    }
+  }
+
+  // se não encontrou, nada a fazer
+  if (!patientId) return;
+
+  // preenche o campo ID do modal
+  const pidInput = document.getElementById('patientId');
+  const pnameInput = document.getElementById('patientNameRead');
+
+  if (pidInput) pidInput.value = patientId;
+
+  // busca o nome para exibição (melhora UX)
+  const name = await fetchPatientName(patientId);
+  if (pnameInput) pnameInput.value = name ?? '—';
+
+  // se solicitado, abre o modal
+  if (autoOpen) {
+    // garante que o modal exista
+    const modalEl = document.getElementById('appointmentModal');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+  }
+}
+
+// então, no DOMContentLoaded (no seu init), chame:
+document.addEventListener("DOMContentLoaded", () => {
+  attachTableActions();
+  attachPager();
+  loadAppointments();
+  document.getElementById("appointmentForm").addEventListener("submit", saveAppointment);
+
+  // prefill (autoOpen opcional — aqui abrimos o modal automaticamente se houver patientId)
+  prefillAppointmentFromContext({ autoOpen: false }).catch(err => {
+    // não falha o carregamento se algo der errado
+    console.error('Prefill falhou:', err);
+  });
+});
+
 // estado de paginação (cliente)
 const state = {
   page: 0,
