@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Consultas - Clinsys</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+
+
 <body class="bg-light">
 
   <!-- Navbar -->
@@ -15,12 +17,43 @@
   </script>
 
   <main class="container my-4">
-    <!-- Alertas -->
     <div id="alerts"></div>
 
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h2 class="mb-0">Consultas</h2>
       <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#appointmentModal">Nova Consulta</button>
+    </div>
+
+        <!-- Filtros / busca -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <form id="filterForm" class="row gx-3 gy-2 align-items-end">
+          <div class="col-sm-3">
+            <label class="form-label small">Paciente (nome)</label>
+            <input id="filterPatientName" type="search" class="form-control" placeholder="Pesquisar por paciente">
+          </div>
+          <div class="col-sm-2">
+            <label class="form-label small">Paciente (ID)</label>
+            <input id="filterPatientId" type="text" class="form-control" placeholder="ID">
+          </div>
+          <div class="col-sm-3">
+            <label class="form-label small">Médico (nome)</label>
+            <input id="filterUserName" type="search" class="form-control" placeholder="Pesquisar por médico">
+          </div>
+          <div class="col-sm-2">
+            <label class="form-label small">Ordenar</label>
+            <select id="filterSort" class="form-select">
+              <option value="date,desc">Data (mais próximos)</option>
+              <option value="date,asc">Data (mais antigos)</option>
+              <option value="patientName,asc">Paciente (A→Z)</option>
+              <option value="patientName,desc">Paciente (Z→A)</option>
+            </select>
+          </div>
+          <div class="col-sm-2 d-grid">
+            <button id="btnApplyFilters" class="btn btn-outline-primary">Pesquisar</button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <!-- Spinner -->
@@ -45,9 +78,7 @@
                 <th class="text-end">Ações</th>
               </tr>
             </thead>
-            <tbody id="appointmentsTableBody">
-              <!-- preenchido via JS -->
-            </tbody>
+            <tbody id="appointmentsTableBody"></tbody>
           </table>
         </div>
 
@@ -75,19 +106,19 @@
           <input type="hidden" id="appointmentId">
 
           <div class="mb-3">
-            <label for="date" class="form-label">Data</label>
+            <label class="form-label">Data</label>
             <input type="date" id="date" class="form-control" required>
           </div>
           <div class="mb-3">
-            <label for="time" class="form-label">Hora</label>
+            <label class="form-label">Hora</label>
             <input type="time" id="time" class="form-control" required>
           </div>
           <div class="mb-3">
-            <label for="description" class="form-label">Descrição</label>
+            <label class="form-label">Descrição</label>
             <input type="text" id="description" class="form-control">
           </div>
           <div class="mb-3">
-            <label for="status" class="form-label">Status</label>
+            <label class="form-label">Status</label>
             <select id="status" class="form-select" required>
               <option value="AGENDADA">Agendada</option>
               <option value="REALIZADA">Realizada</option>
@@ -95,22 +126,24 @@
             </select>
           </div>
           <div class="mb-3">
-            <label for="paid" class="form-label">Pagamento</label>
+            <label class="form-label">Pagamento</label>
             <select id="paid" class="form-select">
               <option value="true">Pago</option>
               <option value="false">Pendente</option>
             </select>
           </div>
+
           <div class="mb-3">
-            <label for="patientId" class="form-label">Paciente (ID)</label>
+            <label class="form-label">Paciente (ID)</label>
             <input type="number" id="patientId" class="form-control" placeholder="ID do paciente" required>
           </div>
           <div class="mb-3">
             <label class="form-label">Paciente</label>
             <input type="text" id="patientNameRead" class="form-control" readonly placeholder="—">
           </div>
+
           <div class="mb-3">
-            <label for="userId" class="form-label">Médico/Usuário (ID)</label>
+            <label class="form-label">Médico/Usuário (ID)</label>
             <input type="number" id="userId" class="form-control" placeholder="ID do usuário" required>
           </div>
         </div>
@@ -124,8 +157,6 @@
 
   <!-- JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-  <!-- IMPORTANTE: ES Module para poder importar apiRequest -->
   <script type="module" src="js/appointments.js"></script>
 </body>
 </html>

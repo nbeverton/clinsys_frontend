@@ -12,9 +12,11 @@ const API_PATH = "/appointments";
    Estado & elementos
    ------------------- */
 const state = { page: 0, size: 10, sort: "date,desc" };
-let cacheAll = [];
+let cacheAll = []; // cache usado quando backend retorna lista completa (Array)
 
-let tbody, pageInfo, loadingEl, prevBtn, nextBtn, appointmentForm, patientIdInput, patientNameReadInput;
+let tbody, pageInfo, loadingEl, prevBtn, nextBtn, appointmentForm;
+let filterForm, filterPatientName, filterPatientId, filterUserName, filterSort;
+let patientIdInput, patientNameReadInput;
 
 /* -------------------
    Helpers
@@ -51,11 +53,9 @@ async function fetchPatientName(patientId) {
 }
 
 async function prefillAppointmentFromContext({ autoOpen = false } = {}) {
-  // checa URL ?patientId=123
   const params = new URLSearchParams(window.location.search);
   let patientId = params.get("patientId");
 
-  // checa sessionStorage
   if (!patientId) {
     patientId = sessionStorage.getItem("clinsys.newAppointment.patientId");
     if (patientId) sessionStorage.removeItem("clinsys.newAppointment.patientId");
@@ -83,6 +83,13 @@ function attachElements() {
   prevBtn = document.getElementById("prevPage");
   nextBtn = document.getElementById("nextPage");
   appointmentForm = document.getElementById("appointmentForm");
+
+  filterForm = document.getElementById("filterForm");
+  filterPatientName = document.getElementById("filterPatientName");
+  filterPatientId = document.getElementById("filterPatientId");
+  filterUserName = document.getElementById("filterUserName");
+  filterSort = document.getElementById("filterSort");
+
   patientIdInput = document.getElementById("patientId");
   patientNameReadInput = document.getElementById("patientNameRead");
 }
@@ -117,7 +124,7 @@ function attachFormHandlers() {
   if (!appointmentForm) return;
   appointmentForm.addEventListener("submit", saveAppointment);
 
-  // quando o usuário editar o patientId manualmente, buscar nome
+  // atualizar nome do paciente quando patientId for editado manualmente
   if (patientIdInput) {
     patientIdInput.addEventListener("change", async () => {
       const v = (patientIdInput.value || "").trim();
@@ -127,6 +134,19 @@ function attachFormHandlers() {
       } else {
         if (patientNameReadInput) patientNameReadInput.value = "";
       }
+    });
+  }
+
+  // filtros
+  if (filterForm) {
+    filterForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      // reset to first page on filter
+      state.page = 0;
+      // keep chosen sort
+      state.sort = filterSort.value || state.sort;
+      // reload (loadAppointments aplica filtros no front quando necessário)
+      loadAppointments();
     });
   }
 }
@@ -140,53 +160,102 @@ async function loadAppointments() {
   setLoading(true);
 
   try {
+    // tenta paginar no servidor
     const params = new URLSearchParams({ page: state.page, size: state.size, sort: state.sort });
     let data;
     try {
       data = await apiRequest(`${API_PATH}?${params.toString()}`, { method: "GET" });
     } catch (err) {
-      // fallback para lista simples
+      // se falhar (backend não suporta), busca lista completa
       data = await apiRequest(API_PATH, { method: "GET" });
     }
 
     let items = [];
     if (Array.isArray(data)) {
+      // lista completa: aplica filtros/ordenacao no cliente e pagina
       if (cacheAll.length === 0) cacheAll = data.slice();
+      // aplica filtros do formulário sobre cacheAll
+      items = applyClientFilters(cacheAll);
+      // aplica ordenação (simples)
+      items = applyClientSort(items, state.sort || (filterSort && filterSort.value));
       const start = state.page * state.size;
       const end = start + state.size;
-      items = cacheAll.slice(start, end);
+      const pageItems = items.slice(start, end);
       updatePaginationInfo({
         number: state.page,
-        totalPages: Math.max(1, Math.ceil(cacheAll.length / state.size)),
+        totalPages: Math.max(1, Math.ceil(items.length / state.size)),
         first: state.page === 0,
-        last: end >= cacheAll.length,
-        numberOfElements: items.length,
+        last: end >= items.length,
+        numberOfElements: pageItems.length,
       });
+      renderRows(pageItems);
     } else {
-      items = data?.content ?? [];
+      // Page do servidor: backend já aplicou filtros (se existir)
+      const pageContent = data?.content ?? [];
+      // se o backend retornou lista Page mas sem aplicar nossos filtros, poderíamos filtrar no cliente também,
+      // mas preferimos confiar no servidor quando ele responde com Page.
+      renderRows(pageContent.map(normalizeAppointment)); // garante estrutura
       updatePaginationInfo({
         number: data?.number ?? 0,
         totalPages: data?.totalPages ?? 1,
         first: data?.first ?? true,
         last: data?.last ?? true,
-        numberOfElements: data?.numberOfElements ?? items.length,
+        numberOfElements: data?.numberOfElements ?? pageContent.length,
       });
       if (typeof data?.number === "number") state.page = data.number;
     }
-
-    renderRows(items);
   } catch (err) {
     console.error("Erro ao carregar consultas:", err);
-    showAlert(
-      err?.message?.includes("403")
-        ? "Sua sessão expirou ou você não tem permissão. Faça login novamente."
-        : "Erro ao carregar consultas.",
-      "danger"
-    );
+    showAlert(err?.message?.includes("403") ? "Sessão expirada. Faça login." : "Erro ao carregar consultas.", "danger");
     if (err?.message?.includes("403")) window.location.href = "/";
   } finally {
     setLoading(false);
   }
+}
+
+// Garante que o objeto appointment tem patientId/userId (fallbacks)
+function normalizeAppointment(a) {
+  return {
+    id: a.id,
+    date: a.date,
+    time: a.time,
+    description: a.description,
+    status: a.status,
+    paid: a.paid,
+    patientName: a.patientName ?? (a.patient ? a.patient.name : null),
+    userName: a.userName ?? (a.user ? a.user.name : null),
+    patientId: a.patientId ?? (a.patient ? a.patient.id : null),
+    userId: a.userId ?? (a.user ? a.user.id : null),
+  };
+}
+
+function applyClientFilters(list) {
+  const name = (filterPatientName?.value || "").trim().toLowerCase();
+  const pid = (filterPatientId?.value || "").trim();
+  const userName = (filterUserName?.value || "").trim().toLowerCase();
+
+  return list
+    .map(normalizeAppointment)
+    .filter((a) => {
+      if (name && !(a.patientName || "").toLowerCase().includes(name)) return false;
+      if (pid && !(String(a.patientId || "").includes(pid))) return false;
+      if (userName && !(a.userName || "").toLowerCase().includes(userName)) return false;
+      return true;
+    });
+}
+
+function applyClientSort(list, sort) {
+  if (!sort) return list;
+  const [field, dir] = (sort || "").split(",");
+  const factor = dir === "asc" ? 1 : -1;
+  // implementações simples para os campos que usamos
+  return list.slice().sort((x, y) => {
+    const a = (x[field] ?? "").toString().toLowerCase();
+    const b = (y[field] ?? "").toString().toLowerCase();
+    if (a < b) return -1 * factor;
+    if (a > b) return 1 * factor;
+    return 0;
+  });
 }
 
 function renderRows(items) {
@@ -197,12 +266,15 @@ function renderRows(items) {
 
   tbody.innerHTML = items
     .map((a) => {
+      // usando patientName/userName e mostrando IDs no title/tooltip
+      const patientTitle = a.patientId ? `ID: ${a.patientId}` : "";
+      const userTitle = a.userId ? `ID: ${a.userId}` : "";
       return `
       <tr>
         <td>${a.date ?? "—"}</td>
         <td>${a.time ?? "—"}</td>
-        <td>${a.patientName ?? "—"}</td>
-        <td>${a.userName ?? "—"}</td>
+        <td title="${patientTitle}">${a.patientName ?? "—"}</td>
+        <td title="${userTitle}">${a.userName ?? "—"}</td>
         <td>${a.status ?? "—"}</td>
         <td>${a.paid ? "Sim" : "Não"}</td>
         <td class="text-end">
@@ -284,6 +356,8 @@ async function editAppointment(id) {
     document.getElementById("description").value = a.description ?? "";
     document.getElementById("status").value = a.status ?? "AGENDADA";
     document.getElementById("paid").value = a.paid ? "true" : "false";
+
+    // usamos patientId/userId retornados pelo backend (se disponíveis)
     document.getElementById("patientId").value = a.patientId ?? "";
     document.getElementById("userId").value = a.userId ?? "";
     if (patientNameReadInput) patientNameReadInput.value = a.patientName ?? "—";
@@ -310,17 +384,14 @@ async function deleteAppointment(id) {
 }
 
 /* -------------------
-   Bootstrapping único
+   Bootstrapping
    ------------------- */
 document.addEventListener("DOMContentLoaded", () => {
   attachElements();
   attachPager();
   attachTableActions();
   attachFormHandlers();
+  // aplica prefill se houver ?patientId=123 ou sessionStorage chave
+  prefillAppointmentFromContext({ autoOpen: false }).catch((err) => console.error("Prefill falhou:", err));
   loadAppointments();
-
-  // prefill sem abrir modal automaticamente (autoOpen = false)
-  prefillAppointmentFromContext({ autoOpen: false }).catch((err) =>
-    console.error("Prefill falhou:", err)
-  );
 });
