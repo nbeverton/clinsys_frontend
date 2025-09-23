@@ -192,6 +192,58 @@
   </div>
 </div>
 
+<!-- Modal Evoluções -->
+<div class="modal fade" id="evolutionModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Evoluções — <span id="evolutionPatientName">Paciente</span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- lista de evoluções -->
+        <div id="evolutionList" class="mb-3">
+          <!-- preenchido via JS -->
+        </div>
+
+        <!-- paginação da lista de evoluções -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="small text-muted" id="evolutionPageInfo">—</div>
+          <div>
+            <button class="btn btn-outline-secondary btn-sm" id="evoPrev">Anterior</button>
+            <button class="btn btn-outline-secondary btn-sm" id="evoNext">Próxima</button>
+          </div>
+        </div>
+
+        <hr />
+
+        <!-- formulário de criar / editar evolução -->
+        <form id="evolutionForm">
+          <input type="hidden" id="evolutionId" value="">
+          <div class="mb-3">
+            <label class="form-label">Evolução</label>
+            <textarea id="evolutionContent" class="form-control" rows="4" required></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Vincular à consulta (opcional)</label>
+            <select id="evolutionAppointmentId" class="form-select">
+              <option value="">Nenhuma</option>
+            </select>
+            <div class="form-text">Selecione para relacionar esta evolução a uma consulta existente.</div>
+          </div>
+
+          <div class="d-flex justify-content-end">
+            <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Fechar</button>
+            <button type="submit" class="btn btn-primary">Salvar evolução</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
   <!-- JS do Bootstrap (para o modal) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module">

@@ -29,7 +29,30 @@ const modal = new bootstrap.Modal(modalEl);
 const modalTitle = qs('#modalTitle');
 const btnSalvar = qs('#btnSalvar');
 
-// listeners básicos - Atenção nesse ponto!!!!!!
+// -- EVOLUÇÕES: elementos
+const evolutionModalEl = qs('#evolutionModal');
+const evolutionModal = evolutionModalEl ? new bootstrap.Modal(evolutionModalEl) : null;
+const evolutionListEl = qs('#evolutionList');
+const evolutionPageInfo = qs('#evolutionPageInfo');
+const evoPrevBtn = qs('#evoPrev');
+const evoNextBtn = qs('#evoNext');
+const evolutionForm = qs('#evolutionForm');
+const evolutionIdInput = qs('#evolutionId');
+const evolutionContentInput = qs('#evolutionContent');
+const evolutionAppointmentSelect = qs('#evolutionAppointmentId');
+const evolutionPatientNameEl = qs('#evolutionPatientName');
+
+const filterCpfInput = qs('#cpfFilter');
+const cpfInput = qs('#cpf');
+
+// estado de evoluções (por paciente)
+const evolutionState = {
+  patientId: null,
+  page: 0,
+  size: 5, // quantas evoluções por página no modal
+};
+
+// listeners básicos
 btnNovo.addEventListener('click', () => openCreateModal());
 
 filterForm.addEventListener('submit', (e) => {
@@ -67,6 +90,8 @@ tbody.addEventListener('click', (e) => {
     openEditModal(id);
   } else if (action === 'delete') {
     deletePatient(id);
+  } else if (action === 'evolution') {
+    openEvolutionModal(id);
   }
 });
 
@@ -161,7 +186,8 @@ function renderRows(items) {
       <td class="text-end">
         <button class="btn btn-sm btn-outline-primary me-1" data-action="edit" data-id="${p.id}">Editar</button>
         <button class="btn btn-sm btn-outline-danger me-1" data-action="delete" data-id="${p.id}">Excluir</button>
-        <button class="btn btn-sm btn-outline-success" data-action="new-appointment" data-id="${p.id}">Nova Consulta</button>
+        <button class="btn btn-sm btn-outline-success me-1" data-action="new-appointment" data-id="${p.id}">Nova Consulta</button>
+        <button class="btn btn-sm btn-outline-secondary" data-action="evolution" data-id="${p.id}">Evolução</button>
       </td>
     </tr>
   `).join('');
@@ -260,6 +286,229 @@ appointmentForm.addEventListener('submit', async (e) => {
   }
 });
 
+/* ====================
+   EVOLUÇÕES (modal)
+   ==================== */
+
+// abre modal de evoluções para um paciente
+async function openEvolutionModal(patientId) {
+  evolutionState.patientId = patientId;
+  evolutionState.page = 0;
+  evolutionIdInput.value = '';
+  evolutionContentInput.value = '';
+
+  // tenta buscar nome do paciente para o título do modal
+  try {
+    const p = await apiRequest(`/patients/${patientId}`);
+    if (evolutionPatientNameEl) evolutionPatientNameEl.textContent = p.name ?? `Paciente #${patientId}`;
+  } catch (err) {
+    if (evolutionPatientNameEl) evolutionPatientNameEl.textContent = `Paciente #${patientId}`;
+  }
+
+  // limpa select de appointments e tenta popular (opcional)
+  if (evolutionAppointmentSelect) {
+    evolutionAppointmentSelect.innerHTML = `<option value="">Nenhuma</option>`;
+    try {
+      // tentativa simples: busca todas e filtra por patientId (se backend devolver patientId em responses)
+      const appts = await apiRequest('/appointments');
+      const filtered = Array.isArray(appts)
+        ? appts.filter(a => String(a.patientId) === String(patientId) || (a.patientName && a.patientName.includes(evolutionPatientNameEl?.textContent || '')))
+        : [];
+      filtered.forEach(a => {
+        const label = `${a.date ?? ''} ${a.time ?? ''} — ${a.userName ?? '—'}`;
+        const opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = label;
+        evolutionAppointmentSelect.appendChild(opt);
+      });
+    } catch (err) {
+      // não crítico; apenas não mostra opções
+      console.debug('Não foi possível buscar consultas para popular select:', err);
+    }
+  }
+
+  if (evolutionModal) evolutionModal.show();
+  await loadEvolutions(); // carrega a primeira página
+}
+
+// carregar página de evoluções do paciente atual
+async function loadEvolutions(page = evolutionState.page) {
+  if (!evolutionState.patientId) return;
+  evolutionListEl.innerHTML = `<div class="text-center text-muted">Carregando...</div>`;
+  try {
+    const params = new URLSearchParams({ page: page, size: evolutionState.size });
+    const data = await apiRequest(`/evolutions/patient/${evolutionState.patientId}?${params.toString()}`);
+    const items = Array.isArray(data) ? data : (data.content ?? []);
+    renderEvolutions(items);
+
+    // paginação do server (se Page)
+    if (!Array.isArray(data)) {
+      const info = {
+        number: data.number ?? 0,
+        totalPages: data.totalPages ?? 1,
+        first: data.first ?? true,
+        last: data.last ?? true,
+        numberOfElements: data.numberOfElements ?? items.length
+      };
+      updateEvolutionPagination(info);
+      evolutionState.page = info.number;
+    } else {
+      // fallback client-side
+      updateEvolutionPagination({
+        number: evolutionState.page,
+        totalPages: Math.max(1, Math.ceil(items.length / evolutionState.size)),
+        first: evolutionState.page === 0,
+        last: (evolutionState.page + 1) * evolutionState.size >= items.length,
+        numberOfElements: items.length
+      });
+    }
+  } catch (err) {
+    console.error('Erro ao carregar evoluções:', err);
+    evolutionListEl.innerHTML = `<div class="text-danger">Erro ao carregar evoluções.</div>`;
+  }
+}
+
+function renderEvolutions(items) {
+  if (!items || items.length === 0) {
+    evolutionListEl.innerHTML = `<div class="text-center text-muted">Nenhuma evolução registrada.</div>`;
+    return;
+  }
+
+  // cada item: mostra autor, createdAt, updatedAt, content (com quebra de linha)
+  evolutionListEl.innerHTML = items.map(e => {
+    const created = e.createdAt ? new Date(e.createdAt).toLocaleString() : '—';
+    const updated = e.updatedAt ? new Date(e.updatedAt).toLocaleString() : null;
+    const author = e.authorName ?? '—';
+    const appointment = e.appointmentId ? ` (consulta #${e.appointmentId})` : '';
+    return `
+      <div class="card mb-2" data-evo-id="${e.id}">
+        <div class="card-body">
+          <div class="d-flex justify-content-between mb-2">
+            <div class="small text-muted">Por ${author} • ${created}${appointment}</div>
+            <div>
+              <button class="btn btn-sm btn-outline-primary me-1" data-evo-action="edit" data-evo-id="${e.id}">Editar</button>
+              <button class="btn btn-sm btn-outline-danger" data-evo-action="delete" data-evo-id="${e.id}">Excluir</button>
+            </div>
+          </div>
+          <div style="white-space:pre-wrap;">${escapeHtml(e.content)}</div>
+          ${updated ? `<div class="small text-muted mt-2">Última edição: ${updated}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// simples função para escapar html antes de inserir (proteção XSS)
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function updateEvolutionPagination(page) {
+  if (!page) return;
+  if (evolutionPageInfo) evolutionPageInfo.textContent = `Página ${page.number + 1} de ${page.totalPages} • Itens: ${page.numberOfElements}`;
+  if (evoPrevBtn) evoPrevBtn.disabled = !!page.first;
+  if (evoNextBtn) evoNextBtn.disabled = !!page.last;
+}
+
+if (evoPrevBtn) evoPrevBtn.addEventListener('click', () => {
+  if (evolutionState.page > 0) {
+    evolutionState.page -= 1;
+    loadEvolutions();
+  }
+});
+if (evoNextBtn) evoNextBtn.addEventListener('click', () => {
+  evolutionState.page += 1;
+  loadEvolutions();
+});
+
+// delegação de eventos dentro da lista de evoluções (editar/excluir)
+if (evolutionListEl) {
+  evolutionListEl.addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('[data-evo-action]');
+    if (!btn) return;
+    const action = btn.getAttribute('data-evo-action');
+    const evoId = btn.getAttribute('data-evo-id');
+    if (action === 'edit') {
+      await editEvolution(evoId);
+    } else if (action === 'delete') {
+      await deleteEvolution(evoId);
+    }
+  });
+}
+
+// submeter criação/edição de evolução
+if (evolutionForm) {
+  evolutionForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const content = evolutionContentInput.value?.trim();
+    if (!content) {
+      showAlert('O conteúdo da evolução não pode ficar vazio.', 'warning');
+      return;
+    }
+    const appointmentId = evolutionAppointmentSelect?.value || null;
+    const dto = {
+      content,
+      patientId: evolutionState.patientId,
+      appointmentId: appointmentId || null
+      // authorId: opcional (recomendo que backend use o usuário do token)
+    };
+
+    const id = evolutionIdInput.value?.trim();
+    try {
+      if (id) {
+        await apiRequest(`/evolutions/${id}`, { method: 'PUT', body: dto });
+        showAlert('Evolução atualizada com sucesso ✅', 'success');
+      } else {
+        await apiRequest('/evolutions', { method: 'POST', body: dto });
+        showAlert('Evolução criada com sucesso ✅', 'success');
+      }
+      // limpa o form, recarrega lista
+      evolutionIdInput.value = '';
+      evolutionContentInput.value = '';
+      if (evolutionAppointmentSelect) evolutionAppointmentSelect.value = '';
+      await loadEvolutions(0);
+    } catch (err) {
+      console.error('Erro ao salvar evolução:', err);
+      showAlert('Erro ao salvar a evolução.', 'danger');
+    }
+  });
+}
+
+// editar evolução (preenche o form)
+async function editEvolution(evoId) {
+  try {
+    const e = await apiRequest(`/evolutions/${evoId}`);
+    evolutionIdInput.value = e.id ?? '';
+    evolutionContentInput.value = e.content ?? '';
+    if (evolutionAppointmentSelect && e.appointmentId) evolutionAppointmentSelect.value = e.appointmentId;
+    // abre modal se não estiver aberto
+    if (evolutionModal) evolutionModal.show();
+  } catch (err) {
+    console.error('Erro ao carregar evolução:', err);
+    showAlert('Não foi possível carregar a evolução.', 'danger');
+  }
+}
+
+// deletar evolução
+async function deleteEvolution(evoId) {
+  if (!confirm('Deseja excluir esta evolução?')) return;
+  try {
+    await apiRequest(`/evolutions/${evoId}`, { method: 'DELETE' });
+    showAlert('Evolução excluída com sucesso 🗑️', 'success');
+    // recarrega página atual de evoluções (ajusta página se necessário)
+    if (evolutionListEl.children.length === 1 && evolutionState.page > 0) evolutionState.page -= 1;
+    loadEvolutions();
+  } catch (err) {
+    console.error('Erro ao excluir evolução:', err);
+    showAlert('Erro ao excluir evolução.', 'danger');
+  }
+}
 
 // aplicar máscara no campo telefone
 Inputmask({ mask: "(99) 99999-9999" }).mask("#phone");
