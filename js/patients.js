@@ -304,27 +304,24 @@ async function openEvolutionModal(patientId) {
     if (evolutionPatientNameEl) evolutionPatientNameEl.textContent = `Paciente #${patientId}`;
   }
 
-  // limpa select de appointments e tenta popular (opcional)
-  if (evolutionAppointmentSelect) {
-    evolutionAppointmentSelect.innerHTML = `<option value="">Nenhuma</option>`;
-    try {
-      // tentativa simples: busca todas e filtra por patientId (se backend devolver patientId em responses)
-      const appts = await apiRequest('/appointments');
-      const filtered = Array.isArray(appts)
-        ? appts.filter(a => String(a.patientId) === String(patientId) || (a.patientName && a.patientName.includes(evolutionPatientNameEl?.textContent || '')))
-        : [];
-      filtered.forEach(a => {
-        const label = `${a.date ?? ''} ${a.time ?? ''} — ${a.userName ?? '—'}`;
+// limpa select e popula com /appointments/patient/{patientId}
+if (evolutionAppointmentSelect) {
+  evolutionAppointmentSelect.innerHTML = `<option value="">Nenhuma</option>`;
+  try {
+    const appts = await apiRequest(`/appointments/patient/${patientId}`);
+    if (Array.isArray(appts) && appts.length) {
+      appts.forEach(a => {
         const opt = document.createElement('option');
+        const label = `${a.date ?? ''} ${a.time ?? ''} — ${a.userName ?? '—'}`;
         opt.value = a.id;
         opt.textContent = label;
         evolutionAppointmentSelect.appendChild(opt);
       });
-    } catch (err) {
-      // não crítico; apenas não mostra opções
-      console.debug('Não foi possível buscar consultas para popular select:', err);
     }
+  } catch (err) {
+    console.debug('Não foi possível buscar consultas do paciente:', err);
   }
+}
 
   if (evolutionModal) evolutionModal.show();
   await loadEvolutions(); // carrega a primeira página
