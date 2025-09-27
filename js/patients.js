@@ -272,8 +272,7 @@ appointmentForm.addEventListener('submit', async (e) => {
     description: document.getElementById('appointmentDescription').value,
     status: 'AGENDADA',
     paid: false,
-    patientId: document.getElementById('appointmentPatientId').value,
-    userId: document.getElementById('appointmentUserId').value
+    patientId: document.getElementById('appointmentPatientId').value
   };
 
   try {

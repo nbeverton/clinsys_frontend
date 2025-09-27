@@ -15,7 +15,7 @@ const state = { page: 0, size: 10, sort: "date,desc" };
 let cacheAll = []; // cache usado quando backend retorna lista completa (Array)
 
 let tbody, pageInfo, loadingEl, prevBtn, nextBtn, appointmentForm;
-let filterForm, filterPatientName, filterPatientId, filterUserName, filterSort;
+let filterForm, filterPatientName, filterPatientId, filterSort;
 let patientIdInput, patientNameReadInput;
 
 /* -------------------
@@ -87,7 +87,6 @@ function attachElements() {
   filterForm = document.getElementById("filterForm");
   filterPatientName = document.getElementById("filterPatientName");
   filterPatientId = document.getElementById("filterPatientId");
-  filterUserName = document.getElementById("filterUserName");
   filterSort = document.getElementById("filterSort");
 
   patientIdInput = document.getElementById("patientId");
@@ -141,11 +140,8 @@ function attachFormHandlers() {
   if (filterForm) {
     filterForm.addEventListener("submit", (e) => {
       e.preventDefault();
-      // reset to first page on filter
       state.page = 0;
-      // keep chosen sort
       state.sort = filterSort.value || state.sort;
-      // reload (loadAppointments aplica filtros no front quando necessário)
       loadAppointments();
     });
   }
@@ -174,9 +170,7 @@ async function loadAppointments() {
     if (Array.isArray(data)) {
       // lista completa: aplica filtros/ordenacao no cliente e pagina
       if (cacheAll.length === 0) cacheAll = data.slice();
-      // aplica filtros do formulário sobre cacheAll
       items = applyClientFilters(cacheAll);
-      // aplica ordenação (simples)
       items = applyClientSort(items, state.sort || (filterSort && filterSort.value));
       const start = state.page * state.size;
       const end = start + state.size;
@@ -190,11 +184,9 @@ async function loadAppointments() {
       });
       renderRows(pageItems);
     } else {
-      // Page do servidor: backend já aplicou filtros (se existir)
+      // Page do servidor
       const pageContent = data?.content ?? [];
-      // se o backend retornou lista Page mas sem aplicar nossos filtros, poderíamos filtrar no cliente também,
-      // mas preferimos confiar no servidor quando ele responde com Page.
-      renderRows(pageContent.map(normalizeAppointment)); // garante estrutura
+      renderRows(pageContent.map(normalizeAppointment));
       updatePaginationInfo({
         number: data?.number ?? 0,
         totalPages: data?.totalPages ?? 1,
@@ -213,7 +205,7 @@ async function loadAppointments() {
   }
 }
 
-// Garante que o objeto appointment tem patientId/userId (fallbacks)
+// normaliza
 function normalizeAppointment(a) {
   return {
     id: a.id,
@@ -232,14 +224,12 @@ function normalizeAppointment(a) {
 function applyClientFilters(list) {
   const name = (filterPatientName?.value || "").trim().toLowerCase();
   const pid = (filterPatientId?.value || "").trim();
-  const userName = (filterUserName?.value || "").trim().toLowerCase();
 
   return list
     .map(normalizeAppointment)
     .filter((a) => {
       if (name && !(a.patientName || "").toLowerCase().includes(name)) return false;
       if (pid && !(String(a.patientId || "").includes(pid))) return false;
-      if (userName && !(a.userName || "").toLowerCase().includes(userName)) return false;
       return true;
     });
 }
@@ -248,7 +238,7 @@ function applyClientSort(list, sort) {
   if (!sort) return list;
   const [field, dir] = (sort || "").split(",");
   const factor = dir === "asc" ? 1 : -1;
-  // implementações simples para os campos que usamos
+
   return list.slice().sort((x, y) => {
     const a = (x[field] ?? "").toString().toLowerCase();
     const b = (y[field] ?? "").toString().toLowerCase();
@@ -266,7 +256,6 @@ function renderRows(items) {
 
   tbody.innerHTML = items
     .map((a) => {
-      // usando patientName/userName e mostrando IDs no title/tooltip
       const patientTitle = a.patientId ? `ID: ${a.patientId}` : "";
       const userTitle = a.userId ? `ID: ${a.userId}` : "";
       return `
@@ -307,8 +296,8 @@ async function saveAppointment(e) {
     description: document.getElementById("description").value,
     status: document.getElementById("status").value,
     paid: document.getElementById("paid").value === "true",
-    patientId: document.getElementById("patientId").value,
-    userId: document.getElementById("userId").value,
+    patientId: document.getElementById("patientId").value
+    // ❌ não enviar userId
   };
 
   // validação simples
@@ -318,10 +307,6 @@ async function saveAppointment(e) {
   }
   if (!isPositiveIntString(String(appointment.patientId))) {
     showAlert("Informe um ID de paciente válido.", "warning");
-    return;
-  }
-  if (!isPositiveIntString(String(appointment.userId))) {
-    showAlert("Informe um ID de usuário (médico) válido.", "warning");
     return;
   }
 
@@ -357,9 +342,7 @@ async function editAppointment(id) {
     document.getElementById("status").value = a.status ?? "AGENDADA";
     document.getElementById("paid").value = a.paid ? "true" : "false";
 
-    // usamos patientId/userId retornados pelo backend (se disponíveis)
     document.getElementById("patientId").value = a.patientId ?? "";
-    document.getElementById("userId").value = a.userId ?? "";
     if (patientNameReadInput) patientNameReadInput.value = a.patientName ?? "—";
 
     new bootstrap.Modal(document.getElementById("appointmentModal")).show();
@@ -391,7 +374,6 @@ document.addEventListener("DOMContentLoaded", () => {
   attachPager();
   attachTableActions();
   attachFormHandlers();
-  // aplica prefill se houver ?patientId=123 ou sessionStorage chave
   prefillAppointmentFromContext({ autoOpen: false }).catch((err) => console.error("Prefill falhou:", err));
   loadAppointments();
 });
