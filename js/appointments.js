@@ -11,12 +11,11 @@ const API_PATH = "/appointments";
 /* -------------------
    Estado & elementos
    ------------------- */
-const state = { page: 0, size: 10, sort: "date,desc" };
-let cacheAll = []; // cache usado quando backend retorna lista completa (Array)
+const state = { page: 0, size: 10, sort: "next" };
 
 let tbody, pageInfo, loadingEl, prevBtn, nextBtn, appointmentForm;
-let filterForm, filterPatientName, filterPatientId, filterSort;
-let patientIdInput, patientNameReadInput;
+let filterForm, filterPatientName, filterSort, filterPatientCpf;
+let patientIdHidden, patientNameReadInput;
 
 /* -------------------
    Helpers
@@ -37,6 +36,20 @@ function setLoading(v) {
 function isPositiveIntString(s) {
   return typeof s === "string" && /^\d+$/.test(s.trim());
 }
+function toDateTime(dateStr, timeStr) {
+  if (!dateStr) return new Date(0);
+  const [y, m, d] = dateStr.split("-").map(Number);
+  let hh = 0, mm = 0;
+  if (timeStr && timeStr.includes(":")) {
+    [hh, mm] = timeStr.split(":").map(Number);
+  }
+  return new Date(y, m - 1, d, hh, mm, 0, 0);
+}
+function isUpcoming(a) {
+  // Somente “AGENDADA” e data/hora >= agora
+  if ((a.status || "").toUpperCase() !== "AGENDADA") return false;
+  return toDateTime(a.date, a.time) >= new Date();
+}
 
 /* -------------------
    Prefill: buscar nome do paciente
@@ -54,16 +67,14 @@ async function fetchPatientName(patientId) {
 
 async function prefillAppointmentFromContext({ autoOpen = false } = {}) {
   const params = new URLSearchParams(window.location.search);
-  let patientId = params.get("patientId");
-
-  if (!patientId) {
-    patientId = sessionStorage.getItem("clinsys.newAppointment.patientId");
-    if (patientId) sessionStorage.removeItem("clinsys.newAppointment.patientId");
-  }
+  let patientId =
+    params.get("patientId") ||
+    sessionStorage.getItem("clinsys.newAppointment.patientId");
+  if (patientId) sessionStorage.removeItem("clinsys.newAppointment.patientId");
 
   if (!patientId) return;
 
-  if (patientIdInput) patientIdInput.value = patientId;
+  if (patientIdHidden) patientIdHidden.value = patientId;
   const name = await fetchPatientName(patientId);
   if (patientNameReadInput) patientNameReadInput.value = name ?? "—";
 
@@ -76,7 +87,6 @@ async function prefillAppointmentFromContext({ autoOpen = false } = {}) {
 /* -------------------
    Inicialização e handlers
    ------------------- */
-let filterPatientCpf; 
 
 function attachElements() {
   tbody = document.getElementById("appointmentsTableBody");
@@ -86,19 +96,13 @@ function attachElements() {
   nextBtn = document.getElementById("nextPage");
   appointmentForm = document.getElementById("appointmentForm");
 
-  filterPatientCpf = document.getElementById("filterPatientCpf");
-
   filterForm = document.getElementById("filterForm");
   filterPatientName = document.getElementById("filterPatientName");
-  filterPatientId = document.getElementById("filterPatientId");
   filterSort = document.getElementById("filterSort");
+  filterPatientCpf = document.getElementById("filterPatientCpf");
 
-  patientIdInput = document.getElementById("patientId");
+  patientIdHidden = document.getElementById("patientIdHidden");
   patientNameReadInput = document.getElementById("patientNameRead");
-}
-
-if (window.Inputmask && filterPatientCpf) {
-  Inputmask({ mask: "999.999.999-99" }).mask(filterPatientCpf);
 }
 
 function attachPager() {
@@ -131,19 +135,6 @@ function attachFormHandlers() {
   if (!appointmentForm) return;
   appointmentForm.addEventListener("submit", saveAppointment);
 
-  // atualizar nome do paciente quando patientId for editado manualmente
-  if (patientIdInput) {
-    patientIdInput.addEventListener("change", async () => {
-      const v = (patientIdInput.value || "").trim();
-      if (isPositiveIntString(v)) {
-        const name = await fetchPatientName(v);
-        if (patientNameReadInput) patientNameReadInput.value = name ?? "—";
-      } else {
-        if (patientNameReadInput) patientNameReadInput.value = "";
-      }
-    });
-  }
-
   // filtros
   if (filterForm) {
     filterForm.addEventListener("submit", (e) => {
@@ -164,16 +155,24 @@ async function loadAppointments() {
   setLoading(true);
 
   try {
-    const params = new URLSearchParams({ page: state.page, size: state.size, sort: state.sort });
+    const params = new URLSearchParams({
+      page: state.page,
+      size: state.size,
+      sort: state.sort,
+    });
     let data;
     try {
-      data = await apiRequest(`${API_PATH}?${params.toString()}`, { method: "GET" });
+      data = await apiRequest(`${API_PATH}?${params.toString()}`, {
+        method: "GET",
+      });
     } catch (err) {
       data = await apiRequest(API_PATH, { method: "GET" });
     }
 
     // normaliza lista vinda do server/lista
-    let items = Array.isArray(data) ? data.map(normalizeAppointment) : (data?.content ?? []).map(normalizeAppointment);
+    let items = Array.isArray(data)
+      ? data.map(normalizeAppointment)
+      : (data?.content ?? []).map(normalizeAppointment);
 
     // ---- filtro por CPF (assíncrono) ----
     // se CPF informado, descobrimos o(s) patientId(s) correspondente(s) e filtramos por eles
@@ -181,11 +180,16 @@ async function loadAppointments() {
     const cpfDigits = (filterPatientCpf?.value || "").replace(/\D/g, "");
     if (cpfDigits) {
       try {
-        const resp = await apiRequest(`/patients?cpf=${cpfDigits}&size=20&page=0&sort=name,asc`);
-        const pats = Array.isArray(resp) ? resp : (resp?.content ?? []);
-        allowedIds = new Set(pats.map(p => p.id));
+        const resp = await apiRequest(
+          `/patients?cpf=${cpfDigits}&size=20&page=0&sort=name,asc`
+        );
+        const pats = Array.isArray(resp) ? resp : resp?.content ?? [];
+        allowedIds = new Set(pats.map((p) => p.id));
       } catch (e) {
-        console.warn('Falha ao buscar paciente por CPF para filtrar consultas:', e);
+        console.warn(
+          "Falha ao buscar paciente por CPF para filtrar consultas:",
+          e
+        );
       }
     }
 
@@ -193,26 +197,29 @@ async function loadAppointments() {
     items = applyClientFilters(items, allowedIds);
 
     // aplica ordenação (inclui 'next')
-    items = applyClientSort(items, (filterSort && filterSort.value) || state.sort || 'next');
+    items = applyClientSort(
+      items,
+      (filterSort && filterSort.value) || state.sort || "next"
+    );
 
     // paginação client-side quando veio Array
     if (Array.isArray(data)) {
-      if (cacheAll.length === 0) cacheAll = items.slice();
+      const total = items.length;
       const start = state.page * state.size;
       const end = start + state.size;
       const pageItems = items.slice(start, end);
       updatePaginationInfo({
         number: state.page,
-        totalPages: Math.max(1, Math.ceil(items.length / state.size)),
+        totalPages: Math.max(1, Math.ceil(total / state.size)),
         first: state.page === 0,
-        last: end >= items.length,
+        last: end >= total,
         numberOfElements: pageItems.length,
       });
       renderRows(pageItems);
     } else {
-      // Page do servidor -> já vem paginado, mas ainda ordenamos localmente se escolher 'next'
-      if ((filterSort && filterSort.value) === 'next') {
-        items = applyClientSort(items, 'next');
+      // Page do servidor -> ainda ordenamos localmente se escolher 'next'
+      if ((filterSort && filterSort.value) === "next") {
+        items = applyClientSort(items, "next");
       }
       renderRows(items);
       updatePaginationInfo({
@@ -226,7 +233,12 @@ async function loadAppointments() {
     }
   } catch (err) {
     console.error("Erro ao carregar consultas:", err);
-    showAlert(err?.message?.includes("403") ? "Sessão expirada. Faça login." : "Erro ao carregar consultas.", "danger");
+    showAlert(
+      err?.message?.includes("403")
+        ? "Sessão expirada. Faça login."
+        : "Erro ao carregar consultas.",
+      "danger"
+    );
     if (err?.message?.includes("403")) window.location.href = "/";
   } finally {
     setLoading(false);
@@ -253,14 +265,30 @@ function applyClientFilters(list, allowedIds = null) {
   const name = (filterPatientName?.value || "").trim().toLowerCase();
 
   return list.filter((a) => {
-    if (name && !(a.patientName || "").toLowerCase().includes(name)) return false;
-    if (allowedIds && a.patientId != null && !allowedIds.has(a.patientId)) return false;
+    if (name && !(a.patientName || "").toLowerCase().includes(name))
+      return false;
+    if (allowedIds && a.patientId != null && !allowedIds.has(a.patientId))
+      return false;
     return true;
   });
 }
 
 function applyClientSort(list, sort) {
-  if (!sort || sort === 'date,asc' || sort === 'date,desc' || sort.startsWith('patientName,')) {
+  if (sort === "next") {
+    // filtra só futuras e AGENDADAS
+    const onlyUpcoming = list.filter(isUpcoming);
+    // ordena ascendente por data+hora
+    return onlyUpcoming.sort(
+      (x, y) => toDateTime(x.date, x.time) - toDateTime(y.date, y.time)
+    );
+  }
+
+  if (
+    !sort ||
+    sort === "date,asc" ||
+    sort === "date,desc" ||
+    sort.startsWith("patientName,")
+  ) {
     const [field, dir] = (sort || "date,desc").split(",");
     const factor = dir === "asc" ? 1 : -1;
     return list.slice().sort((x, y) => {
@@ -272,27 +300,7 @@ function applyClientSort(list, sort) {
     });
   }
 
-  // 'next' => ordenar por data+hora em ordem crescente (próximas primeiro)
-  if (sort === 'next') {
-    return list.slice().sort((x, y) => {
-      const da = toDateTime(x.date, x.time);
-      const db = toDateTime(y.date, y.time);
-      return da - db;
-    });
-  }
-
   return list;
-}
-
-function toDateTime(dateStr, timeStr) {
-  // date: 'YYYY-MM-DD', time: 'HH:mm'
-  if (!dateStr) return new Date(0);
-  const [y, m, d] = dateStr.split('-').map(Number);
-  let hh = 0, mm = 0;
-  if (timeStr && timeStr.includes(':')) {
-    [hh, mm] = timeStr.split(':').map(Number);
-  }
-  return new Date(y, (m - 1), d, hh, mm, 0, 0);
 }
 
 function renderRows(items) {
@@ -324,7 +332,8 @@ function renderRows(items) {
 
 function updatePaginationInfo(page) {
   const { number, totalPages, first, last, numberOfElements } = page;
-  if (pageInfo) pageInfo.textContent = `Página ${number + 1} de ${totalPages} • Itens nesta página: ${numberOfElements}`;
+  if (pageInfo)
+    pageInfo.textContent = `Página ${number + 1} de ${totalPages} • Itens nesta página: ${numberOfElements}`;
   if (prevBtn) prevBtn.disabled = !!first;
   if (nextBtn) nextBtn.disabled = !!last;
 }
@@ -337,23 +346,23 @@ async function saveAppointment(e) {
   if (!appointmentForm) return;
 
   const id = (document.getElementById("appointmentId").value || "").trim();
+  const patientId = (patientIdHidden?.value || "").trim();
+
   const appointment = {
     date: document.getElementById("date").value,
     time: document.getElementById("time").value,
     description: document.getElementById("description").value,
     status: document.getElementById("status").value,
     paid: document.getElementById("paid").value === "true",
-    patientId: document.getElementById("patientId").value
-    // ❌ não enviar userId
+    patientId
   };
 
-  // validação simples
   if (!appointment.date || !appointment.time) {
     showAlert("Data e hora são obrigatórias.", "warning");
     return;
   }
-  if (!isPositiveIntString(String(appointment.patientId))) {
-    showAlert("Informe um ID de paciente válido.", "warning");
+  if (!/^\d+$/.test(patientId)) {
+    showAlert("Selecione o paciente a partir da página de Pacientes (o ID não foi definido).", "warning");
     return;
   }
 
@@ -366,6 +375,9 @@ async function saveAppointment(e) {
 
     appointmentForm.reset();
     document.getElementById("appointmentId").value = "";
+    if (patientIdHidden) patientIdHidden.value = "";
+    if (patientNameReadInput) patientNameReadInput.value = "—";
+
     const modal = bootstrap.Modal.getInstance(document.getElementById("appointmentModal"));
     modal?.hide();
 
@@ -378,6 +390,7 @@ async function saveAppointment(e) {
   }
 }
 
+
 async function editAppointment(id) {
   try {
     const a = await apiRequest(`${API_PATH}/${id}`, { method: "GET" });
@@ -389,7 +402,7 @@ async function editAppointment(id) {
     document.getElementById("status").value = a.status ?? "AGENDADA";
     document.getElementById("paid").value = a.paid ? "true" : "false";
 
-    document.getElementById("patientId").value = a.patientId ?? "";
+    if (patientIdHidden) patientIdHidden.value = a.patientId ?? "";
     if (patientNameReadInput) patientNameReadInput.value = a.patientName ?? "—";
 
     new bootstrap.Modal(document.getElementById("appointmentModal")).show();
@@ -421,6 +434,14 @@ document.addEventListener("DOMContentLoaded", () => {
   attachPager();
   attachTableActions();
   attachFormHandlers();
-  prefillAppointmentFromContext({ autoOpen: false }).catch((err) => console.error("Prefill falhou:", err));
+
+  // aplicar máscara de CPF agora que o elemento existe
+  if (window.Inputmask && filterPatientCpf) {
+    Inputmask({ mask: "999.999.999-99" }).mask(filterPatientCpf);
+  }
+
+  prefillAppointmentFromContext({ autoOpen: false }).catch((err) =>
+    console.error("Prefill falhou:", err)
+  );
   loadAppointments();
 });
